@@ -1,11 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from flask.ext.bootstrap import Bootstrap
 from sqlalchemy import create_engine, desc
 from sqlalchemy.orm import sessionmaker
 from database_setup import Category, Item, Base
 
 app = Flask(__name__)
-bootstrap = Bootstrap(app)
 
 engine = create_engine('sqlite:///catalog.db')
 Base.metadata.bind = engine
@@ -14,10 +12,18 @@ session = DBSession()
 
 @app.route('/')
 @app.route('/categories')
-def catalog():
-    categories = session.query(Category).all()
-    items = session.query(Item).order_by(Item.id.desc()).limit(7)
-    return render_template('catalog.html', categories = categories, items = items)
+@app.route('/category/<int:category_id>')
+def catalog(category_id = False):
+    if category_id == False:
+        categories = session.query(Category).all()
+        category = False
+        items = session.query(Item).order_by(Item.id.desc()).limit(7)
+        return render_template('catalog.html', categories = categories, category = category, items = items)
+    else:
+        categories = session.query(Category).all()
+        category = session.query(Category).filter_by(id = category_id).one()
+        items = session.query(Item).filter_by(category_id=category_id)
+        return render_template('catalog.html', categories = categories, category = category, items = items)
 
 @app.route('/category/new', methods=['GET','POST'])
 def newCategory():
@@ -53,7 +59,7 @@ def deleteCategory(category_id):
     else:
         return render_template('deleteCategory.html', category = category)
 
-@app.route('/category/<int:category_id>')
+
 @app.route('/category/<int:category_id>/items')
 def showItems(category_id):
     category = session.query(Category).filter_by(id = category_id).one()

@@ -1,7 +1,4 @@
 {% extends "base.html" %}
-{% import "bootstrap/wtf.html" as wtf %}
-
-{% block title %}Udacity Catalog{% endblock %}
 
 {% block page_content %}
 <div class="page-header">
@@ -18,7 +15,13 @@
     <ul>
           {% for i in categories %}
           <li>
-            <h3><a href="{{ url_for('showItems', category_id = i.id) }}">{{ i.name }}</a></h3>
+            {% if i.id == category.id %}
+              <u>
+            {% endif %}
+            <h3><a href="{{ url_for('catalog', category_id = i.id) }}">{{ i.name }}</a></h3>
+            {% if i.id == category.id %}
+              </u>
+            {% endif %}
             <a href="{{ url_for('editCategory', category_id = i.id) }}">Edit</a>
             <a href="{{ url_for('deleteCategory', category_id = i.id) }}">Delete</a>
             <br><br>
@@ -28,13 +31,19 @@
   </div>
   <div class="col-md-6 column">
     <h3>
-      Latest Items
+      {% if category.id %}
+        {{ category.name }} Items ({{ items.count() }} items)
+      {% else %}
+        Latest Items
+      {% endif %}
     </h3>
     <ul>
           {% for i in items %}
           <li>
             <h3><a href="">{{ i.name }}</a></h3>
-            <h5>{{ i.category.name }}</h5>
+            {% if not category.id %}
+              <h5>{{ i.category.name }}</h5>
+            {% endif %}
             <a href="">Edit</a>
             <a href="">Delete</a>
             <br><br>
