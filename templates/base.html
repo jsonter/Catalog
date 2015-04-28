@@ -27,6 +27,13 @@
           <ul class="nav navbar-nav">
             <li><a href="/">Home</a></li>
           </ul>
+          <ul class="nav navbar-nav">
+            {% if not loggedIn %}
+            <li><a href="{{ url_for('login') }}">Login</a></li>
+            {% else %}
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            {% endif %}
+          </ul>
         </div>
       </div>
     </div>

@@ -45,6 +45,13 @@ class Item(Base):
 			'id': self.id,
 		}
 
+class User(Base):
+
+	__tablename__ = 'user'
+
+	name = Column(String(10), nullable = False)
+	password = Column(String(10), nullable = False)
+	id = Column(Integer, primary_key = True)
 
 engine = create_engine('sqlite:///catalog.db')
 

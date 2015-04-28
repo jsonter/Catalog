@@ -10,7 +10,10 @@
         Categories
       </h3>
       <h4>
-        <a href="{{ url_for('newCategory') }}">Add a new category.</a>
+        {% if loggedIn %}
+          <a href="{{ url_for('newCategory') }}">Add a new category.</a>
+        {% endif %}
+
       </h4>
     <ul>
           {% for i in categories %}
@@ -22,30 +25,37 @@
             {% if i.id == category.id %}
               </u>
             {% endif %}
-            <a href="{{ url_for('editCategory', category_id = i.id) }}">Edit</a>
-            <a href="{{ url_for('deleteCategory', category_id = i.id) }}">Delete</a>
+            {% if loggedIn %}
+              <a href="{{ url_for('editCategory', category_id = i.id) }}">Edit</a>
+              <a href="{{ url_for('deleteCategory', category_id = i.id) }}">Delete</a>
+            {% endif %}
             <br><br>
           </li>
           {% endfor %}
     </ul>
   </div>
   <div class="col-md-6 column">
-    <h3>
-      {% if category.id %}
-        {{ category.name }} Items ({{ items.count() }} items)
-      {% else %}
-        Latest Items
-      {% endif %}
-    </h3>
+
+    {% if loggedIn %}
+      <h4><a href="{{ url_for('newItem') }}"><strong>+ Add Item</strong></h4></a>
+    {% endif %}
+    {% if category.id %}
+      <h3>{{ category.name }} Items ({{ items.count() }} items)</h3>
+    {% else %}
+      <h3>Latest Items</h3>
+    {% endif %}
+
     <ul>
           {% for i in items %}
           <li>
-            <h3><a href="">{{ i.name }}</a></h3>
+            <h3><a href="{{ url_for('showItem', category_id = i.category_id, item_id = i.id) }}">{{ i.name }}</a></h3>
             {% if not category.id %}
               <h5>{{ i.category.name }}</h5>
             {% endif %}
-            <a href="">Edit</a>
-            <a href="">Delete</a>
+            {% if loggedIn %}
+              <a href="{{ url_for('editItem', item_id = i.id) }}">Edit</a>
+              <a href="{{ url_for('deleteItem', item_id = i.id) }}">Delete</a>
+            {% endif %}
             <br><br>
           </li>
           {% endfor %}

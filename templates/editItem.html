@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+<div class="page-header">
+  <h1>Edit Item: {{ item.name }}</h1>
+</div>
+<div class="row clearfix">
+	<div class="col-md-12 column">
+    <form class="form-horizontal" action = "{{ url_for('editItem', item_id = item.id) }}" method = 'post'>
+      <fieldset>
+
+        <!-- Text input-->
+        <div class="control-group">
+          <label class="control-label" for="name">Name</label>
+          <div class="controls">
+            <input id="name" name="name" type="text" placeholder="{{ item.name }}" class="input-xlarge" required="">
+            <p class="help-block">Item's Name</p>
+          </div>
+        </div>
+
+        <!-- Textarea -->
+        <div class="control-group">
+          <label class="control-label" for="description">Description</label>
+          <div class="controls">
+            <textarea id="description" name="description">{{ item.description }}</textarea>
+          </div>
+        </div>
+
+        <!-- Select Basic -->
+        <div class="control-group">
+          <label class="control-label" for="category_id">Category</label>
+          <div class="controls">
+            <select id="category_id" name="category_id" class="input-xlarge">
+              {% for i in categories %}
+                {% if i.id == item.category_id %}
+                  <option selected value={{ i.id }}>{{ i.name }}</option>
+                {% else %}
+                  <option value={{ i.id }}>{{ i.name }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <br><br>
+
+        <!-- Button -->
+        <div class="control-group">
+          <div class="controls">
+            <input id="submit" name="submit" type="submit" value="Save" class="btn btn-primary"></button>
+            <a href="{{ url_for('catalog') }}">Cancel</a>
+          </div>
+        </div>
+
+      </fieldset>
+      </form>
+    </div>
+	</div>
+</div>
+{% endblock %}
