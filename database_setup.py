@@ -16,15 +16,15 @@ class Category(Base):
 
 	name = Column(String(80), nullable = False)
 	id = Column(Integer, primary_key = True)
+	items = relationship("Item")
 
 	@property
 	def serialize(self):
 
 		return {
-			'name': self.name,
 			'id': self.id,
+			'name': self.name
 		}
-
 
 class Item(Base):
 
@@ -35,14 +35,13 @@ class Item(Base):
 	category_id = Column(Integer, ForeignKey('category.id'))
 	category = relationship(Category)
 
-#We added this serialize function to be able to send JSON objects in a serializable format
 	@property
 	def serialize(self):
 
 		return {
-			'name': self.name,
-			'description': self.description,
 			'id': self.id,
+			'name': self.name,
+			'description': self.description
 		}
 
 class User(Base):

@@ -28,13 +28,27 @@ def catalog(category_id = False):
     if category_id == False:
         categories = session.query(Category).all()
         category = False
-        items = session.query(Item).order_by(Item.id.desc()).limit(7)
+        items = session.query(Item).order_by(Item.id.desc()).limit(5)
         return render_template('catalog.html', loggedIn = app.loggedIn, categories = categories, category = category, items = items)
     else:
         categories = session.query(Category).all()
         category = session.query(Category).filter_by(id = category_id).one()
         items = session.query(Item).filter_by(category_id=category_id)
         return render_template('catalog.html', loggedIn = app.loggedIn, categories = categories, category = category, items = items)
+
+@app.route('/catalog.json')
+def catalogJSON(category_id = False):
+    categories = session.query(Category).all()
+    serializedCategories = []
+    for i in categories:
+        newCategory = i.serialize
+        items = session.query(Item).filter_by(category_id = i.id).all()
+        serializedItems = []
+        for j in items:
+            serializedItems.append(j.serialize)
+        newCategory['items'] = serializedItems
+        serializedCategories.append(newCategory)
+    return jsonify(categories=[serializedCategories])
 
 @app.route('/category/new', methods=['GET','POST'])
 @login_required
