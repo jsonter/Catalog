@@ -1,0 +1,13 @@
+#signinButton {
+	padding-top: 10px;
+}
+#userpic {
+	height:50px;
+  width:50px;
+  border-radius:50%;
+  overflow:hidden;
+  margin:auto;
+}
+#userInfo {
+	padding-top: 5px;
+}

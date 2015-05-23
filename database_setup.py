@@ -10,13 +10,23 @@ from sqlalchemy import create_engine
 
 Base = declarative_base()
 
+class User(Base):
+
+	__tablename__ = 'User'
+
+	id = Column(Integer, primary_key = True)
+	name = Column(String(30), nullable = False)
+	email = Column(String(100), unique = True)
+	picture = Column(String(100))
+
 class Category(Base):
 
-	__tablename__ = 'category'
+	__tablename__ = 'Category'
 
-	name = Column(String(80), nullable = False)
 	id = Column(Integer, primary_key = True)
-	items = relationship("Item")
+	name = Column(String(80), nullable = False)
+	user_id = Column(Integer, ForeignKey('User.id'))
+	user = relationship(User)
 
 	@property
 	def serialize(self):
@@ -28,12 +38,15 @@ class Category(Base):
 
 class Item(Base):
 
-	__tablename__ = 'item'
-	name = Column(String(80), nullable = False)
+	__tablename__ = 'Item'
+
 	id = Column(Integer, primary_key = True)
+	name = Column(String(80), nullable = False)
 	description = Column(String(250))
-	category_id = Column(Integer, ForeignKey('category.id'))
+	category_id = Column(Integer, ForeignKey('Category.id'))
+	user_id = Column(Integer, ForeignKey('User.id'))
 	category = relationship(Category)
+	user = relationship(User)
 
 	@property
 	def serialize(self):
@@ -44,13 +57,6 @@ class Item(Base):
 			'description': self.description
 		}
 
-class User(Base):
-
-	__tablename__ = 'user'
-
-	name = Column(String(10), nullable = False)
-	password = Column(String(10), nullable = False)
-	id = Column(Integer, primary_key = True)
 
 engine = create_engine('sqlite:///catalog.db')
 

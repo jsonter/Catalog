@@ -6,8 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Bootstrap -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
-    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <!-- Google plus login -->
+    <script src="//code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script type="text/javascript" src="https://apis.google.com/js/client:platform.js?onload=start" async defer></script>
 
   </head>
   <body>
@@ -27,16 +30,44 @@
           <ul class="nav navbar-nav">
             <li><a href="/">Home</a></li>
           </ul>
-          <ul class="nav navbar-nav">
-            {% if not loggedIn %}
+          <ul class="nav navbar-nav navbar-right list-inline">
+ <!--           {% if not loggedIn %}
             <li><a href="{{ url_for('login') }}">Login</a></li>
             {% else %}
-            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>   <button type="button" class="btn btn-default navbar-btn">Sign in</button>
+            {% endif %} -->
+            {% if not user %}
+            <li>
+              <div id="signinButton">
+                <span class = "g-signin"
+                  data-scope = "openid email"
+                  data-clientid = "29131525031-tq83rdp0b8juf2b0a866b5h92j782qbl.apps.googleusercontent.com"
+                  data-redirecturi = "postmessage"
+                  data-accesstype = "offline"
+                  data-cookiepolicy = "single_host_origin"
+                  data-callback = "signInCallback"
+                  data-approvalprompt = "force" >
+                </span>
+              </div>
+            </li>
+            {% else %}
+            <li>
+              <ul id="userInfo">
+                <li>{{ user.name }}</li>
+                <li><a href="/disconnect">Signout</a></li>
+              </ul>
+            </li>
+            <li>
+              <div id="signOutButton">
+                <img src= {{ user.picture }} id="userpic">
+              </div>
+            </li>
             {% endif %}
           </ul>
         </div>
       </div>
     </div>
+    <div id="result"></div>
 
 
     <div class="container">
@@ -50,8 +81,38 @@
       {% block page_content %}{% endblock %}
     </div>
 
-    <script src="https://code.jquery.com/jquery-1.11.2.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
 
-  </body>
+    <script type="text/javascript">
+      function signInCallback(authResult) {
+
+        if (authResult['code']) {
+          // Hide the sign-in button now that the user is authorized
+          $('#signinButton').attr('style', 'display: none');
+          //$('#signOutButton').attr('style', 'display: inline');
+          // Send the one-time-use code to the server, if the server responds, write a login success message to page.
+          $.ajax({
+            type: 'POST',
+            url: '/gconnect?state={{ STATE }}',
+            processData: false,
+            contentType: 'application/octet-stream; charset=utf-8',
+            data: authResult['code'],
+            success: function(result) {
+              if (result) {
+                //$('#result').html('Login Successful!<br>' + result + '</br>Redirecting...')
+                setTimeout(function() {
+                  window.location.href = "/";
+              }, 1000);
+            } else if (authResult['error']) {
+              console.log('There was an error: ' + authResult['error']);
+            } else {
+              $('#result').html("Failed to make a server side call. Check your configuration and console.");
+            }
+            }
+          })
+        }
+      }
+    </script>
+
+ </body>
 </html>
