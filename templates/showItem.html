@@ -7,7 +7,7 @@
 <div class="row clearfix">
 	<div class="col-md-12 column">
 		<p>{{ item.description }}</p>
-      {% if user %}
+      {% if user.id == item.user_id %}
     		<a href="{{ url_for('editItem', item_id = item.id) }}">Edit</a>
         <a href="{{ url_for('deleteItem', item_id = item.id) }}">Delete</a>
       {% endif %}
