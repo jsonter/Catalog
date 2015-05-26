@@ -11,3 +11,15 @@
 #userInfo {
 	padding-top: 5px;
 }
+#itemPicture {
+	height:400px;
+  border-radius:5%;
+  overflow:hidden;
+  margin:auto;
+}
+.media-object {
+	height:50px;
+}
+.categories {
+	list-style-type: none;
+}

@@ -45,6 +45,7 @@ class Item(Base):
 	description = Column(String(250))
 	category_id = Column(Integer, ForeignKey('Category.id'))
 	user_id = Column(Integer, ForeignKey('User.id'))
+	picture = Column(String(100))
 	category = relationship(Category)
 	user = relationship(User)
 

@@ -1,10 +1,12 @@
 from functools import wraps
+import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
 from sqlalchemy import create_engine, desc
 from sqlalchemy.orm import sessionmaker
 from flask import session as login_session
 import random, string, requests, json, httplib2
 from oauth2client.client import flow_from_clientsecrets, FlowExchangeError
+from werkzeug import secure_filename
 
 from database_setup import Base, User, Category, Item
 
@@ -13,6 +15,10 @@ app = Flask(__name__)
 CLIENT_ID = json.loads(
     open('client_secrets.json', 'r').read())['web']['client_id']
 APPLICATION_NAME = "Catalog Application"
+
+UPLOAD_FOLDER = 'static/'
+ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 engine = create_engine('sqlite:///catalog.db')
 Base.metadata.bind = engine
@@ -329,36 +335,52 @@ def showItem(category_id, item_id):
 @app.route('/item/new', methods=['GET','POST'])
 @login_required
 def newItem():
-    categories = session.query(Category).all()
     if request.method == 'POST':
+        file = request.files['picture']
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            picFile = filename
+        else:
+            picFile = ''
         newItem = Item(
             name = request.form['name'],
             description = request.form['description'],
             category_id = request.form['category_id'],
-            user_id = login_session['user_id'])
+            user_id = login_session['user_id'],
+            picture = picFile)
         session.add(newItem)
         session.commit()
         flash("New item created!")
         return redirect(url_for('catalog'))
     else:
         user = getUserInfo(login_session['user_id'])
+        categories = session.query(Category).all()
         return render_template('newItem.html', user = user, categories = categories)
 
 @app.route('/item/<int:item_id>/edit', methods=['GET','POST'])
 @login_required
 def editItem(item_id):
     item = session.query(Item).filter_by(id = item_id).one()
-    categories = session.query(Category).all()
     if request.method == 'POST':
         item.name =request.form['name']
         item.description = request.form['description']
         item.category_id = request.form['category_id']
+        file = request.files['picture']
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            item.picture = filename
+        else:
+            item.picture = ''
         session.commit()
         flash("Item modified!")
         return redirect(url_for('catalog'))
     else:
         user = getUserInfo(login_session['user_id'])
+        categories = session.query(Category).all()
         return render_template('editItem.html', user = user, item = item, categories = categories)
+
 
 @app.route('/item/<int:item_id>/delete', methods=['GET','POST'])
 @login_required
@@ -372,6 +394,11 @@ def deleteItem(item_id):
     else:
         user = getUserInfo(login_session['user_id'])
         return render_template('deleteItem.html', user = user, item = item)
+
+# Check for valid filename for picture upload.
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 # Error Pages
 @app.errorhandler(404)
@@ -414,7 +441,4 @@ def createUser(login_session):
 if __name__ == '__main__':
     app.secret_key = "super_secret_key"
     app.debug = True
-    app.username = 'admin'
-    app.password = 'a'
-    app.loggedIn = False
     app.run(host = '0.0.0.0', port = 5000)

@@ -6,14 +6,14 @@
 </div>
 <div class="row clearfix">
 	<div class="col-md-12 column">
-    <form class="form-horizontal" action = "{{ url_for('newItem') }}" method = 'post'>
+    <form class="form-horizontal" action = "{{ url_for('newItem') }}" method = 'post' enctype = "multipart/form-data">
       <fieldset>
 
         <!-- Text input-->
         <div class="control-group">
           <label class="control-label" for="name">Name</label>
           <div class="controls">
-            <input id="name" name="name" type="text" placeholder="" class="input-xlarge" required="">
+            <input id="name" name="name" type="text" placeholder="" class="form-control" required="">
             <p class="help-block">Item's Name</p>
           </div>
         </div>
@@ -22,7 +22,7 @@
         <div class="control-group">
           <label class="control-label" for="description">Description</label>
           <div class="controls">
-            <textarea id="description" name="description">Description of the item.</textarea>
+            <textarea id="description" name="description" class="form-control">Description of the item.</textarea>
           </div>
         </div>
 
@@ -30,13 +30,21 @@
         <div class="control-group">
           <label class="control-label" for="category_id">Category</label>
           <div class="controls">
-            <select id="category_id" name="category_id" class="input-xlarge">
+            <select id="category_id" name="category_id" class="form-control">
               {% for i in categories %}
                 <option value={{ i.id }}>{{ i.name }}</option>
               {% endfor %}
             </select>
           </div>
         </div>
+
+        <!-- Photo upload -->
+        <div class="control-group">
+          <label class="control-label" for="picture">Upload Picture</label>
+          <div class="controls">
+            <input id= "picture" name = "picture" type= "file" >
+            <p class="help-block">Picture File</p>
+          </div>
         <br><br>
 
         <!-- Button -->
