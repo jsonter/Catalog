@@ -83,7 +83,7 @@
             {% if not user %}
             <li>
               <div class="signinButton">
-                <fb:login-button scope="public_profile,email" onlogin="sendTokenToServer();">Sign in</fb:login-button>
+                <fb:login-button size="large" scope="public_profile,email" onlogin="sendTokenToServer();">Sign in</fb:login-button>
               </div>
             </li>
             <li>
@@ -129,8 +129,6 @@
 
       {% block page_content %}{% endblock %}
     </div>
-
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
 
     <script type="text/javascript">
       function signInCallback(authResult) {

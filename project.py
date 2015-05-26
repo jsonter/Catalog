@@ -1,3 +1,11 @@
+'''
+Udacity Full Stack Web Developer Nanodegree Project 3.
+
+This project provides a list of items within a variety of categories.
+The Python framework Flask is used in conjunction with sqlalchemy for database ORM.
+Google Plus and Facebook Oath2 providers are used for user registration and authentication.
+
+'''
 from functools import wraps
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
@@ -28,16 +36,7 @@ session = DBSession()
 state = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(32))
 
 def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' in login_session:
-            return f(*args, **kwargs)
-        else:
-            flash('You are not logged in!')
-            return redirect(url_for('catalog'))
-    return decorated_function
-
-def user_item(f):
+    ''' Decorator function to check if user is logged in. Apply this decorator to any function that requires user authentication. '''
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' in login_session:
@@ -49,19 +48,21 @@ def user_item(f):
 
 @app.route('/fbconnect', methods=['POST'])
 def fbconnect():
+    ''' Function to authenticate with facebook. '''
+    # Validate the state token
     if request.args.get('state') != login_session['state']:
         response = make_response(json.dumps('Invalid state parameter.'), 401)
         response.headers['Content-Type'] = 'application/json'
         return response
+    # Get the short-term access token
     access_token = request.data
-    print "access token received %s " % access_token
 
+    # Get the long-term access token from facebook using the short-term token.
     app_id = json.loads(open('fb_client_secrets.json', 'r').read())[
         'web']['app_id']
     app_secret = json.loads(
         open('fb_client_secrets.json', 'r').read())['web']['app_secret']
     url = 'https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=%s&client_secret=%s&fb_exchange_token=%s' % (app_id, app_secret, access_token)
-    print "url sent for access token: %s" %url
     h = httplib2.Http()
     result = h.request(url, 'GET')[1]
 
@@ -70,12 +71,10 @@ def fbconnect():
     # strip expire tag from access token
     token = result.split("&")[0]
 
-
+    # Get the users info from facebook using long-term token.
     url = 'https://graph.facebook.com/v2.2/me?%s' % token
     h = httplib2.Http()
     result = h.request(url, 'GET')[1]
-    print "url sent for API access:%s"% url
-    print "API JSON result: %s" % result
     data = json.loads(result)
     login_session['provider'] = 'facebook'
     login_session['username'] = data["name"]
@@ -98,7 +97,7 @@ def fbconnect():
     user_id = getUserId(login_session['email'])
     if not user_id:
         user_id = createUser(login_session)
-    # If user found, add the user id to the session. If new user cannot be added, disconnect the google account.
+    # If user found, add the user id to the session. If new user cannot be added, disconnect the facebook account.
     if user_id:
         login_session['user_id'] = user_id
     else:
@@ -109,10 +108,9 @@ def fbconnect():
 
 @app.route('/fbdisconnect')
 def fbdisconnect():
-    print login_session['facebook_id']
-    print login_session['access_token']
+    ''' Function to disconnect from facebook '''
     facebook_id = login_session['facebook_id']
-    # The access token must me included to successfully logout
+    # The access token must be included to successfully logout
     access_token = login_session['access_token']
     url = 'https://graph.facebook.com/%s/permissions?fb_exchange_token=%s' % (facebook_id,access_token)
     h = httplib2.Http()
@@ -121,6 +119,7 @@ def fbdisconnect():
 
 @app.route('/gconnect', methods=['POST'])
 def gconnect():
+    ''' Function to authenticate with Google Plus. '''
     # Validate state token
     if request.args.get('state') != login_session['state']:
         response = make_response(json.dumps('Invalid state parameter.'), 401)
@@ -208,6 +207,7 @@ def gconnect():
 # DISCONNECT - Revoke a current user's token and reset their login_session
 @app.route('/gdisconnect')
 def gdisconnect():
+    ''' Function to disconnect from Google. '''
     # Only disconnect a connected user.
     credentials = login_session.get('credentials')
     if credentials is None:
@@ -230,6 +230,7 @@ def gdisconnect():
 # Disconnect based on provider
 @app.route('/disconnect')
 def disconnect():
+    ''' Function to disconnect user from whichever authentication provider they are using.'''
     if 'provider' in login_session:
         if login_session['provider'] == 'google':
             gdisconnect()
@@ -253,26 +254,35 @@ def disconnect():
 @app.route('/catalog')
 @app.route('/category/<int:category_id>')
 def catalog(category_id = 0):
+    ''' Base url function. Show list of all categories and latest (5) items for any category.
+        If url is /category/<int:category_id> then limit items to that category only.
+    '''
     login_session['state'] = state
-    categories = session.query(Category).all()
+    categories = session.query(Category).order_by(Category.name)
     if category_id:
+        # If category id is passed in, limit items to that category only.
         category = session.query(Category).filter_by(id = category_id).one()
         items = session.query(Item).filter_by(category_id = category_id)
     else:
+        # No category, show latest 5 items.
         category = ''
         items = session.query(Item).order_by(Item.id.desc()).limit(5)
 
     if 'user_id' in login_session:
+        # If user is logged in, pass user to template to show their login details and CRUD options.
         user = getUserInfo(login_session['user_id'])
         return render_template('catalog.html', user = user, categories = categories, category = category, items = items, STATE = login_session["state"])
     else:
-        return render_template('catalog.html', user = '', categories = categories, category = category, items = items, STATE = login_session["state"])
+        # If user is not logged in, template will only display categories and items, no CRUD.
+        return render_template('catalog.html', user = '', categories = categories, category = category, items = items, STATE = login_session['state'])
 
 @app.route('/catalog.json')
 def catalogJSON(category_id = False):
+    ''' JSON endpoint for database. All categories and their related items. '''
     categories = session.query(Category).all()
     serializedCategories = []
     for i in categories:
+        # For each category, serialize it's data then append it's serialized items.
         newCategory = i.serialize
         items = session.query(Item).filter_by(category_id = i.id).all()
         serializedItems = []
@@ -285,13 +295,14 @@ def catalogJSON(category_id = False):
 @app.route('/category/new', methods=['GET','POST'])
 @login_required
 def newCategory():
+    ''' Display new category template and save the entered category. '''
     if request.method == 'POST':
         newCategory = Category(
             name = request.form['category'],
             user_id = login_session['user_id'])
         session.add(newCategory)
         session.commit()
-        flash("New category created!")
+        flash('New category created!')
         return redirect(url_for('catalog'))
     else:
         user = getUserInfo(login_session['user_id'])
@@ -300,6 +311,7 @@ def newCategory():
 @app.route('/category/<int:category_id>/edit', methods=['GET','POST'])
 @login_required
 def editCategory(category_id):
+    ''' Display edit category template and save the selected category. '''
     category = session.query(Category).filter_by(id = category_id).one()
     if request.method == 'POST':
         category.name = request.form['category']
@@ -313,6 +325,7 @@ def editCategory(category_id):
 @app.route('/category/<int:category_id>/delete', methods=['GET','POST'])
 @login_required
 def deleteCategory(category_id):
+    ''' Display delete category template and delete the selected category. '''
     category = session.query(Category).filter_by(id = category_id).one()
     if request.method == 'POST':
         session.delete(category)
@@ -325,6 +338,7 @@ def deleteCategory(category_id):
 
 @app.route('/category/<int:category_id>/<int:item_id>')
 def showItem(category_id, item_id):
+    ''' Display the show item template, if user logged in show the CRUD options. '''
     item = session.query(Item).filter_by(id = item_id).one()
     if 'user_id' in login_session:
         user = getUserInfo(login_session['user_id'])
@@ -332,23 +346,24 @@ def showItem(category_id, item_id):
     else:
         return render_template('showItem.html', user = '', item = item)
 
+def savePicture(file):
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        return filename
+    else:
+        return ''
+
 @app.route('/item/new', methods=['GET','POST'])
 @login_required
 def newItem():
     if request.method == 'POST':
-        file = request.files['picture']
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            picFile = filename
-        else:
-            picFile = ''
         newItem = Item(
             name = request.form['name'],
             description = request.form['description'],
             category_id = request.form['category_id'],
             user_id = login_session['user_id'],
-            picture = picFile)
+            picture = savePicture(request.files['picture']))
         session.add(newItem)
         session.commit()
         flash("New item created!")
@@ -366,13 +381,7 @@ def editItem(item_id):
         item.name =request.form['name']
         item.description = request.form['description']
         item.category_id = request.form['category_id']
-        file = request.files['picture']
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            item.picture = filename
-        else:
-            item.picture = ''
+        item.picture = savePicture(request.files['picture'])
         session.commit()
         flash("Item modified!")
         return redirect(url_for('catalog'))
@@ -439,6 +448,6 @@ def createUser(login_session):
         return None
 
 if __name__ == '__main__':
-    app.secret_key = "super_secret_key"
+    app.secret_key = "Udacity_Project_3_Secret"
     app.debug = True
     app.run(host = '0.0.0.0', port = 5000)
