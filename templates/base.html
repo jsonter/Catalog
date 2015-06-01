@@ -64,6 +64,7 @@
       }
     </script>
 
+    // Navigation bar
     <div class="navbar navbar-inverse" role="navigation">
       <div class="container">
         <div class="navbar-header">
@@ -118,7 +119,7 @@
     </div>
     <div id="result"></div>
 
-
+    <!-- Flask flash message area. -->
     <div class="container">
       {% for message in get_flashed_messages() %}
       <div class="alert alert-warning">
@@ -130,6 +131,7 @@
       {% block page_content %}{% endblock %}
     </div>
 
+    <!-- Google signin callback code. -->
     <script type="text/javascript">
       function signInCallback(authResult) {
 

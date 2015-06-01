@@ -347,6 +347,7 @@ def showItem(category_id, item_id):
         return render_template('showItem.html', user = '', item = item)
 
 def savePicture(file):
+    ''' Save uploaded picture for an item into static folder. Return the filename of the picture. '''
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
@@ -354,9 +355,15 @@ def savePicture(file):
     else:
         return ''
 
+def allowed_file(filename):
+    ''' Check for valid filename for saving a picture. '''
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+
 @app.route('/item/new', methods=['GET','POST'])
 @login_required
 def newItem():
+    ''' Add a new item to the database. '''
     if request.method == 'POST':
         newItem = Item(
             name = request.form['name'],
@@ -376,6 +383,7 @@ def newItem():
 @app.route('/item/<int:item_id>/edit', methods=['GET','POST'])
 @login_required
 def editItem(item_id):
+    ''' Edit an existing item in the database. '''
     item = session.query(Item).filter_by(id = item_id).one()
     if request.method == 'POST':
         item.name =request.form['name']
@@ -394,6 +402,7 @@ def editItem(item_id):
 @app.route('/item/<int:item_id>/delete', methods=['GET','POST'])
 @login_required
 def deleteItem(item_id):
+    ''' Delete item from database. '''
     item = session.query(Item).filter_by(id = item_id).one()
     if request.method == 'POST':
         session.delete(item)
@@ -403,11 +412,6 @@ def deleteItem(item_id):
     else:
         user = getUserInfo(login_session['user_id'])
         return render_template('deleteItem.html', user = user, item = item)
-
-# Check for valid filename for picture upload.
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 # Error Pages
 @app.errorhandler(404)
@@ -420,10 +424,12 @@ def page_not_found(e):
 
 @app.errorhandler(500)
 def internal_server_error(e):
+    session.rollback()
     return render_template('500.html'), 500
 
 # User Info
 def getUserId(email):
+    ''' Get and return user id if email is registered, return none if email is not in database. '''
     try:
         user = session.query(User).filter_by(email = email).one()
         return user.id
@@ -431,10 +437,12 @@ def getUserId(email):
         return None
 
 def getUserInfo(user_id):
+    ''' Return user object. '''
     user = session.query(User).filter_by(id = user_id).one()
     return user
 
 def createUser(login_session):
+    ''' Create a new user in database. '''
     try:
         newUser = User(name = login_session['username'], email = login_session['email'], picture = login_session['picture'])
         session.add(newUser)
