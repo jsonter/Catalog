@@ -24,6 +24,7 @@ CLIENT_ID = json.loads(
     open('client_secrets.json', 'r').read())['web']['client_id']
 APPLICATION_NAME = "Catalog Application"
 
+# Settings for picture uploads
 UPLOAD_FOLDER = 'static/'
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -33,7 +34,9 @@ Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
+# Generate state variable for login token exchange.
 state = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(32))
+
 
 def login_required(f):
     ''' Decorator function to check if user is logged in. Apply this decorator to any function that requires user authentication. '''
@@ -45,6 +48,7 @@ def login_required(f):
             flash('You are not logged in!')
             return redirect(url_for('catalog'))
     return decorated_function
+
 
 @app.route('/fbconnect', methods=['POST'])
 def fbconnect():
@@ -103,7 +107,6 @@ def fbconnect():
     else:
         return redirect(url_for('fbdisconnect'))
 
-    flash("Successfully connected")
     return redirect(url_for('catalog'))
 
 @app.route('/fbdisconnect')
@@ -116,6 +119,7 @@ def fbdisconnect():
     h = httplib2.Http()
     result = h.request(url, 'DELETE')[1]
     return "you have been logged out"
+
 
 @app.route('/gconnect', methods=['POST'])
 def gconnect():
@@ -200,9 +204,7 @@ def gconnect():
     else:
         return redirect(url_for('gdisconnect'))
 
-    flash("Successfully connected")
     return redirect(url_for('catalog'))
-
 
 # DISCONNECT - Revoke a current user's token and reset their login_session
 @app.route('/gdisconnect')
@@ -227,11 +229,12 @@ def gdisconnect():
         response.headers['Content-Type'] = 'application/json'
         return response
 
-# Disconnect based on provider
+
 @app.route('/disconnect')
 def disconnect():
     ''' Function to disconnect user from whichever authentication provider they are using.'''
     if 'provider' in login_session:
+        # Disconnect based on provider
         if login_session['provider'] == 'google':
             gdisconnect()
             del login_session['gplus_id']
@@ -250,6 +253,7 @@ def disconnect():
         flash("You were not logged in")
         return redirect(url_for('catalog'))
 
+
 @app.route('/')
 @app.route('/catalog')
 @app.route('/category/<int:category_id>')
@@ -257,6 +261,7 @@ def catalog(category_id = 0):
     ''' Base url function. Show list of all categories and latest (5) items for any category.
         If url is /category/<int:category_id> then limit items to that category only.
     '''
+    NUM_LAST_ITEMS = 5 # The number of latest items to show if no category is selected.
     login_session['state'] = state
     categories = session.query(Category).order_by(Category.name)
     if category_id:
@@ -266,7 +271,7 @@ def catalog(category_id = 0):
     else:
         # No category, show latest 5 items.
         category = ''
-        items = session.query(Item).order_by(Item.id.desc()).limit(5)
+        items = session.query(Item).order_by(Item.id.desc()).limit(NUM_LAST_ITEMS)
 
     if 'user_id' in login_session:
         # If user is logged in, pass user to template to show their login details and CRUD options.
@@ -275,6 +280,7 @@ def catalog(category_id = 0):
     else:
         # If user is not logged in, template will only display categories and items, no CRUD.
         return render_template('catalog.html', user = '', categories = categories, category = category, items = items, STATE = login_session['state'])
+
 
 @app.route('/catalog.json')
 def catalogJSON(category_id = False):
@@ -292,6 +298,7 @@ def catalogJSON(category_id = False):
         serializedCategories.append(newCategory)
     return jsonify(categories=[serializedCategories])
 
+
 @app.route('/category/new', methods=['GET','POST'])
 @login_required
 def newCategory():
@@ -308,6 +315,7 @@ def newCategory():
         user = getUserInfo(login_session['user_id'])
         return render_template('newCategory.html', user = user)
 
+
 @app.route('/category/<int:category_id>/edit', methods=['GET','POST'])
 @login_required
 def editCategory(category_id):
@@ -321,6 +329,7 @@ def editCategory(category_id):
     else:
         user = getUserInfo(login_session['user_id'])
         return render_template('editCategory.html', user = user, category = category)
+
 
 @app.route('/category/<int:category_id>/delete', methods=['GET','POST'])
 @login_required
@@ -336,6 +345,7 @@ def deleteCategory(category_id):
         user = getUserInfo(login_session['user_id'])
         return render_template('deleteCategory.html', user = user, category = category)
 
+
 @app.route('/category/<int:category_id>/<int:item_id>')
 def showItem(category_id, item_id):
     ''' Display the show item template, if user logged in show the CRUD options. '''
@@ -345,6 +355,7 @@ def showItem(category_id, item_id):
         return render_template('showItem.html', user = user, item = item)
     else:
         return render_template('showItem.html', user = '', item = item)
+
 
 def savePicture(file):
     ''' Save uploaded picture for an item into static folder. Return the filename of the picture. '''
@@ -359,6 +370,7 @@ def allowed_file(filename):
     ''' Check for valid filename for saving a picture. '''
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+
 
 @app.route('/item/new', methods=['GET','POST'])
 @login_required
@@ -379,6 +391,7 @@ def newItem():
         user = getUserInfo(login_session['user_id'])
         categories = session.query(Category).all()
         return render_template('newItem.html', user = user, categories = categories)
+
 
 @app.route('/item/<int:item_id>/edit', methods=['GET','POST'])
 @login_required
@@ -412,6 +425,7 @@ def deleteItem(item_id):
     else:
         user = getUserInfo(login_session['user_id'])
         return render_template('deleteItem.html', user = user, item = item)
+
 
 # Error Pages
 @app.errorhandler(404)
