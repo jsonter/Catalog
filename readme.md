@@ -23,3 +23,11 @@ Load a sample database with the command python /vagrant/catalog/catalogData.py.
 Run the application within the VM (python /vagrant/catalog/project.py).
 
 Access and test your application by visiting http://localhost:5000 locally.
+
+## Dependancies
+
+The following extra Python packages are required for this application.
+
+(pip install xxx)
+
+Flask, SQLAlchemy, requests, httplib2, oauth2client.
