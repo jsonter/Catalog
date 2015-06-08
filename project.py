@@ -34,10 +34,6 @@ Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
-# Generate state variable for login token exchange.
-state = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(32))
-
-
 def login_required(f):
     ''' Decorator function to check if user is logged in. Apply this decorator to any function that requires user authentication. '''
     @wraps(f)
@@ -258,10 +254,15 @@ def disconnect():
 @app.route('/catalog')
 @app.route('/category/<int:category_id>')
 def catalog(category_id = 0):
-    ''' Base url function. Show list of all categories and latest (5) items for any category.
+    ''' Base url function.
+        Show list of all categories and latest (5) items for any category.
         If url is /category/<int:category_id> then limit items to that category only.
     '''
     NUM_LAST_ITEMS = 5 # The number of latest items to show if no category is selected.
+
+    # Generate state variable for login token exchange.
+    state = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(32))
+
     login_session['state'] = state
     categories = session.query(Category).order_by(Category.name)
     if category_id:
@@ -327,9 +328,13 @@ def editCategory(category_id):
         flash("Category name changed!")
         return redirect(url_for('catalog'))
     else:
-        user = getUserInfo(login_session['user_id'])
-        return render_template('editCategory.html', user = user, category = category)
-
+        # Only edit if category belongs to user, otherwise redirect.
+        if category.user_id == login_session['user_id']:
+            user = getUserInfo(login_session['user_id'])
+            return render_template('editCategory.html', user = user, category = category)
+        else:
+            flash("You may not edit a category that does not belong to you!")
+            return redirect(url_for('catalog'))
 
 @app.route('/category/<int:category_id>/delete', methods=['GET','POST'])
 @login_required
@@ -342,9 +347,13 @@ def deleteCategory(category_id):
         flash("Category deleted!")
         return redirect(url_for('catalog'))
     else:
-        user = getUserInfo(login_session['user_id'])
-        return render_template('deleteCategory.html', user = user, category = category)
-
+        # Only delete if category belongs to user, otherwise redirect.
+        if category.user_id == login_session['user_id']:
+            user = getUserInfo(login_session['user_id'])
+            return render_template('deleteCategory.html', user = user, category = category)
+        else:
+            flash("You may not delete a category that does not belong to you!")
+            return redirect(url_for('catalog'))
 
 @app.route('/category/<int:category_id>/<int:item_id>')
 def showItem(category_id, item_id):
@@ -407,10 +416,14 @@ def editItem(item_id):
         flash("Item modified!")
         return redirect(url_for('catalog'))
     else:
-        user = getUserInfo(login_session['user_id'])
-        categories = session.query(Category).all()
-        return render_template('editItem.html', user = user, item = item, categories = categories)
-
+        # Only edit if item belongs to user, otherwise redirect.
+        if item.user_id == login_session['user_id']:
+            user = getUserInfo(login_session['user_id'])
+            categories = session.query(Category).all()
+            return render_template('editItem.html', user = user, item = item, categories = categories)
+        else:
+            flash("You may not edit an item that does not belong to you!")
+            return redirect(url_for('catalog'))
 
 @app.route('/item/<int:item_id>/delete', methods=['GET','POST'])
 @login_required
@@ -423,9 +436,13 @@ def deleteItem(item_id):
         flash("Item deleted!")
         return redirect(url_for('catalog'))
     else:
-        user = getUserInfo(login_session['user_id'])
-        return render_template('deleteItem.html', user = user, item = item)
-
+        # Only delete if item belongs to user, otherwise redirect.
+        if item.user_id == login_session['user_id']:
+            user = getUserInfo(login_session['user_id'])
+            return render_template('deleteItem.html', user = user, item = item)
+        else:
+            flash("You may not delete an item that does not belong to you!")
+            return redirect(url_for('catalog'))
 
 # Error Pages
 @app.errorhandler(404)
