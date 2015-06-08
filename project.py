@@ -8,7 +8,8 @@ Google Plus and Facebook Oath2 providers are used for user registration and auth
 '''
 from functools import wraps
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response
+from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import jsonify, make_response
 from sqlalchemy import create_engine, desc
 from sqlalchemy.orm import sessionmaker
 from flask import session as login_session
@@ -28,6 +29,9 @@ APPLICATION_NAME = "Catalog Application"
 UPLOAD_FOLDER = 'static/'
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Setting for default page behaviour
+NUM_LAST_ITEMS = 5 # The number of items to show if no category is selected.
 
 engine = create_engine('sqlite:///catalog.db')
 Base.metadata.bind = engine
@@ -258,8 +262,6 @@ def catalog(category_id = 0):
         Show list of all categories and latest (5) items for any category.
         If url is /category/<int:category_id> then limit items to that category only.
     '''
-    NUM_LAST_ITEMS = 5 # The number of latest items to show if no category is selected.
-
     # Generate state variable for login token exchange.
     state = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(32))
 
@@ -342,6 +344,9 @@ def deleteCategory(category_id):
     ''' Display delete category template and delete the selected category. '''
     category = session.query(Category).filter_by(id = category_id).one()
     if request.method == 'POST':
+        # Deleting a category will cascade delete items in that category.
+        # First remove any stored images for category images.
+        removeCategoryPictures(category_id)
         session.delete(category)
         session.commit()
         flash("Category deleted!")
@@ -362,23 +367,37 @@ def showItem(category_id, item_id):
     if 'user_id' in login_session:
         user = getUserInfo(login_session['user_id'])
         return render_template('showItem.html', user = user, item = item)
+
     else:
         return render_template('showItem.html', user = '', item = item)
 
 
-def savePicture(file):
-    ''' Save uploaded picture for an item into static folder. Return the filename of the picture. '''
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        return filename
+def savePicture(file, id):
+    ''' Save uploaded picture for an item into static folder.
+        Return the filename of the picture which will be id of item with
+        random string for uniqueness plus the extension. '''
+
+    extension = file.filename.rsplit('.', 1)[1]
+    # Check for valid filename extension for saving a picture, else don't save.
+    if extension in ALLOWED_EXTENSIONS:
+        # Generate random variable for unique picture file name.
+        randString = ''.join(random.choice(string.ascii_lowercase + string.digits) for x in xrange(5))
+        # Create the filename.
+        fileName = str(id) + randString + '.' + extension
+        # Save the picture file to the server.
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], fileName))
+        return fileName
+
     else:
         return ''
 
-def allowed_file(filename):
-    ''' Check for valid filename for saving a picture. '''
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+def removeCategoryPictures(category_id):
+    ''' Remove all pictures for items in a category. '''
+    items = session.query(Item).filter_by(category_id = category_id)
+    for item in items:
+        # Delete old picture
+        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], item.picture))
+
 
 
 @app.route('/item/new', methods=['GET','POST'])
@@ -390,12 +409,17 @@ def newItem():
             name = request.form['name'],
             description = request.form['description'],
             category_id = request.form['category_id'],
-            user_id = login_session['user_id'],
-            picture = savePicture(request.files['picture']))
+            user_id = login_session['user_id'])
         session.add(newItem)
         session.commit()
+
+        # If picture was chosen, save to static folder and update item.
+        if request.files['picture']:
+            newItem.picture = savePicture(request.files['picture'], newItem.id)
+            session.commit()
         flash("New item created!")
         return redirect(url_for('catalog'))
+
     else:
         user = getUserInfo(login_session['user_id'])
         categories = session.query(Category).all()
@@ -411,7 +435,15 @@ def editItem(item_id):
         item.name =request.form['name']
         item.description = request.form['description']
         item.category_id = request.form['category_id']
-        item.picture = savePicture(request.files['picture'])
+        #item.picture = savePicture(request.files['picture'])
+
+        # If new picture was chosen.
+        if request.files['picture']:
+            # Delete old picture
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], item.picture))
+            # Save new picture to static folder and update item
+            item.picture = savePicture(request.files['picture'], item.id)
+
         session.commit()
         flash("Item modified!")
         return redirect(url_for('catalog'))
@@ -431,6 +463,7 @@ def deleteItem(item_id):
     ''' Delete item from database. '''
     item = session.query(Item).filter_by(id = item_id).one()
     if request.method == 'POST':
+        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], item.picture))
         session.delete(item)
         session.commit()
         flash("Item deleted!")
