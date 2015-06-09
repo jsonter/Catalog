@@ -382,7 +382,12 @@ def editCategory(category_id):
     '''
     Display edit category template and save the selected category.
     '''
-    category = session.query(Category).filter_by(id=category_id).one()
+    try:
+        category = session.query(Category).filter_by(id=category_id).one()
+    except:
+        flash("That category does not exist!")
+        return redirect(url_for('catalog'))
+
     if request.method == 'POST':
         category.name = request.form['category']
         session.commit()
@@ -405,7 +410,12 @@ def deleteCategory(category_id):
     '''
     Display delete category template and delete the selected category.
     '''
-    category = session.query(Category).filter_by(id=category_id).one()
+    try:
+        category = session.query(Category).filter_by(id=category_id).one()
+    except:
+        flash("That category does not exist!")
+        return redirect(url_for('catalog'))
+
     if request.method == 'POST':
         # Deleting a category will cascade delete items in that category.
         # First remove any stored images for category images.
@@ -428,10 +438,15 @@ def deleteCategory(category_id):
 @app.route('/category/<int:category_id>/<int:item_id>')
 def showItem(category_id, item_id):
     '''
-    Display the show item template, if user logged in show the CRUD
-    options.
+    Display the show item template, if user logged in and is the
+    owner of the item; show the CRUD options.
     '''
-    item = session.query(Item).filter_by(id=item_id).one()
+    try:
+        item = session.query(Item).filter_by(id=item_id).one()
+    except:
+        flash("That item does not exist!")
+        return redirect(url_for('catalog'))
+
     if 'user_id' in login_session:
         user = getUserInfo(login_session['user_id'])
         return render_template('showItem.html', user=user, item=item)
@@ -450,7 +465,7 @@ def savePicture(file, id):
     extension = file.filename.rsplit('.', 1)[1]
     # Check for valid filename extension for saving a picture,
     # else don't save.
-    if extension in ALLOWED_EXTENSIONS:
+    if extension.lower() in ALLOWED_EXTENSIONS:
         # Generate random variable for unique picture file name.
         randString = ''.join(
             random.choice(string.ascii_lowercase + string.digits) for
@@ -463,6 +478,7 @@ def savePicture(file, id):
         return fileName
 
     else:
+        flash("Could not save picture. Not a recognised image file.")
         return ''
 
 
@@ -471,7 +487,8 @@ def removeCategoryPictures(category_id):
     items = session.query(Item).filter_by(category_id=category_id)
     for item in items:
         # Delete old picture
-        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], item.picture))
+        if item.picture:
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], item.picture))
 
 
 @app.route('/item/new', methods=['GET', 'POST'])
@@ -505,7 +522,12 @@ def newItem():
 @login_required
 def editItem(item_id):
     ''' Edit an existing item in the database. '''
-    item = session.query(Item).filter_by(id=item_id).one()
+    try:
+        item = session.query(Item).filter_by(id=item_id).one()
+    except:
+        flash("That item does not exist!")
+        return redirect(url_for('catalog'))
+
     if request.method == 'POST':
         item.name = request.form['name']
         item.description = request.form['description']
@@ -514,7 +536,10 @@ def editItem(item_id):
         # If new picture was chosen.
         if request.files['picture']:
             # Delete old picture
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], item.picture))
+            if item.picture:
+                os.remove(os.path.join(
+                    app.config['UPLOAD_FOLDER'], item.picture))
+
             # Save new picture to static folder and update item
             item.picture = savePicture(request.files['picture'], item.id)
 
@@ -539,9 +564,15 @@ def editItem(item_id):
 @login_required
 def deleteItem(item_id):
     ''' Delete item from database. '''
-    item = session.query(Item).filter_by(id=item_id).one()
+    try:
+        item = session.query(Item).filter_by(id=item_id).one()
+    except:
+        flash("That item does not exist!")
+        return redirect(url_for('catalog'))
+
     if request.method == 'POST':
-        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], item.picture))
+        if item.picture:
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], item.picture))
         session.delete(item)
         session.commit()
         flash("Item deleted!")
@@ -564,7 +595,7 @@ def page_not_found(e):
 
 
 @app.errorhandler(405)
-def page_not_found(e):
+def method_not_allowed(e):
     return render_template('405.html'), 405
 
 
@@ -602,10 +633,6 @@ def createUser(login_session):
 
         session.add(newUser)
         session.commit()
-        user = session.query(User).filter_by(
-            email=login_session['email']).one()
-
-        flash("Welcome %s, you have been added as a new user." % user.name)
         return user.id
     except:
         session.rollback()
